@@ -1,7 +1,7 @@
 {
   "name": "mcp-server-codechef",
-  "version": "0.1.2",
-  "description": "MCP server that turns CodeChef user profiles into structured JSON for LLMs",
+  "version": "0.2.0",
+  "description": "MCP server for CodeChef: profiles & analytics, contests & problems, sandboxed code execution, and submission with verdict tracking",
   "type": "module",
   "main": "src/server.js",
   "bin": {
@@ -13,8 +13,10 @@
   ],
   "scripts": {
     "start": "node src/server.js",
-    "test": "node test/unit.js && node test/smoke.js && node test/mcp.js",
-    "test:unit": "node test/unit.js",
+    "test": "node test/unit.js && node test/workflow.js && node test/sandbox.js && node test/smoke.js && node test/mcp.js",
+    "test:unit": "node test/unit.js && node test/workflow.js",
+    "test:workflow": "node test/workflow.js",
+    "test:sandbox": "node test/sandbox.js",
     "test:live": "node test/smoke.js",
     "test:mcp": "node test/mcp.js"
   },

@@ -1,26 +1,35 @@
 """
-Secure Docker-based code execution sandbox.
+Secure Docker sandbox for code execution.
 
-All code execution MUST occur inside isolated containers with:
-- --network=none      (no internet access)
-- --memory=256m       (memory limit)
-- --cpus=1            (CPU limit)
-- --pids-limit=64     (process limit)
-- --read-only         (read-only filesystem)
-- --cap-drop=ALL      (drop all Linux capabilities)
-- Timeout protection  (compile: 10s, execute: 5s)
+Each run gets: no network, read-only root filesystem, all capabilities dropped,
+no privilege escalation, memory/CPU/PID limits and a writable /tmp. Source code
+and stdin are mounted read-only.
 
-NEVER exposes raw shell access. Only constrained run_cpp/run_python functions.
+Fixes over the previous runner (mirrored in src/sandbox.js):
+- /tmp is mounted with ``exec``; Docker's tmpfs default is ``noexec``, which
+  made every compiled binary (C++, Go, Rust) fail with "permission denied".
+- Code is compiled once (it used to be compiled twice).
+- On timeout the container itself is killed (killing only the docker CLI
+  left the container running).
+- Go gets a writable HOME/GOCACHE, which ``go build`` needs on a read-only root.
 """
 
+from __future__ import annotations
+
 import os
+import shutil
 import subprocess
 import tempfile
-import shutil
+import time
+import uuid
 
 from app.config import config
-from app.sandbox.languages import get_language_config, LanguageConfig
+from app.sandbox.languages import LanguageConfig, get_language_config, supported_languages
 from app.utils.logger import logger
+
+COMPILE_ERROR_EXIT = 97
+TIME_MARKER = "__MCP_RUN_NS__"
+MAX_OUTPUT_CHARS = 64 * 1024
 
 
 class SandboxResult:
@@ -58,194 +67,166 @@ class SandboxResult:
         }
 
 
-def _build_docker_command(
-    lang_config: LanguageConfig,
-    host_dir: str,
-    command: str,
-    timeout: int,
-) -> list[str]:
-    """Build the Docker run command with all security flags.
+def build_script(lang: LanguageConfig, filename: str, execution_timeout: int) -> str:
+    """Shell script run inside the container: copy, compile once, run with a time limit."""
+    steps = [f"cp /code/{filename} /tmp/{filename}"]
+    if lang.compile_command:
+        steps.append(
+            f"{lang.compile_command} > /tmp/compile.log 2>&1 || "
+            f"{{ cat /tmp/compile.log >&2; exit {COMPILE_ERROR_EXIT}; }}"
+        )
+    steps += [
+        "s=$(date +%s%N)",
+        f"timeout {execution_timeout} {lang.run_command} < /code/input.txt",
+        "rc=$?",
+        "e=$(date +%s%N)",
+        f'echo "{TIME_MARKER} $s $e" >&2',
+        "exit $rc",
+    ]
+    return "\n".join(steps)
 
-    This is the ONLY place subprocess commands are constructed.
-    All flags enforce the PRD security requirements.
-    """
+
+def build_docker_command(lang: LanguageConfig, host_dir: str, name: str, filename: str) -> list[str]:
+    """Every security flag lives here so it can be unit-tested."""
+    memory = config.SANDBOX_MEMORY_LIMIT
     return [
         "docker", "run",
-        "--rm",                                         # Remove container after exit
-        "--network=none",                               # No internet access
-        f"--memory={config.SANDBOX_MEMORY_LIMIT}",     # Memory limit
-        f"--cpus={config.SANDBOX_CPU_LIMIT}",          # CPU limit
-        f"--pids-limit={config.SANDBOX_PID_LIMIT}",    # Process limit
-        "--read-only",                                  # Read-only filesystem
-        "--cap-drop=ALL",                               # Drop all Linux capabilities
-        "--tmpfs=/tmp:rw,size=64m",                    # Writable /tmp (needed for compilation)
-        "-v", f"{host_dir}:/code:ro",                  # Mount code as read-only
-        lang_config.docker_image,
-        "sh", "-c", command,
+        "--rm",
+        "--name", name,
+        "--network=none",
+        f"--memory={memory}",
+        f"--memory-swap={memory}",
+        f"--cpus={config.SANDBOX_CPU_LIMIT}",
+        f"--pids-limit={config.SANDBOX_PID_LIMIT}",
+        "--read-only",
+        "--cap-drop=ALL",
+        "--security-opt=no-new-privileges",
+        "--tmpfs=/tmp:rw,exec,nosuid,size=256m",
+        "-e", "HOME=/tmp",
+        "-e", "GOCACHE=/tmp/.gocache",
+        "-e", "GOPATH=/tmp/go",
+        "-v", f"{host_dir}:/code:ro",
+        lang.docker_image,
+        "sh", "-c", build_script(lang, filename, config.EXECUTION_TIMEOUT),
     ]
 
 
-def run_code_in_sandbox(
-    language: str,
-    code: str,
-    stdin_input: str = "",
-) -> SandboxResult:
-    """Execute code inside a secure Docker sandbox.
-
-    Args:
-        language: Programming language (e.g., "cpp", "python")
-        code: Source code to execute
-        stdin_input: Input to feed via stdin
-
-    Returns:
-        SandboxResult with stdout, stderr, exit code, timing
-
-    Raises:
-        ValueError: If the language is not supported
-        RuntimeError: If Docker is not available
-    """
-    lang_config = get_language_config(language)
-    if not lang_config:
-        return SandboxResult(
-            stderr=f"Unsupported language: {language}",
-            exit_code=1,
-        )
-
-    # Check Docker availability
-    if not _docker_available():
-        return SandboxResult(
-            stderr="Docker is not running or not installed. Sandbox requires Docker.",
-            exit_code=1,
-        )
-
-    # Create temp directory with source code
-    tmp_dir = tempfile.mkdtemp(prefix="codechef_sandbox_")
-    try:
-        # Write source code to temp file
-        filename = f"solution{lang_config.file_extension}"
-        if language in ("java",):
-            filename = "Main.java"
-        filepath = os.path.join(tmp_dir, filename)
-        with open(filepath, "w") as f:
-            f.write(code)
-
-        # Write stdin input
-        stdin_path = os.path.join(tmp_dir, "input.txt")
-        with open(stdin_path, "w") as f:
-            f.write(stdin_input)
-
-        # Step 1: Compile (if needed)
-        if lang_config.compile_command:
-            compile_result = _run_in_docker(
-                lang_config,
-                tmp_dir,
-                f"cp /code/{filename} /tmp/{filename} && {lang_config.compile_command}",
-                timeout=config.COMPILE_TIMEOUT,
-            )
-            if compile_result.exit_code != 0:
-                return SandboxResult(
-                    compile_error=compile_result.stderr or compile_result.stdout,
-                    exit_code=compile_result.exit_code,
-                )
-
-        # Step 2: Execute with stdin
-        if lang_config.compile_command:
-            # Compiled language: compile and run in one container
-            run_cmd = (
-                f"cp /code/{filename} /tmp/{filename} && "
-                f"{lang_config.compile_command} && "
-                f"cat /code/input.txt | {lang_config.run_command}"
-            )
+def extract_timing(stderr: str) -> tuple[str, float | None]:
+    """Remove the timing marker from stderr and return (stderr, seconds)."""
+    seconds = None
+    kept = []
+    for line in stderr.splitlines():
+        if line.startswith(TIME_MARKER):
+            parts = line[len(TIME_MARKER):].split()
+            try:
+                start, end = int(parts[0]), int(parts[1])
+                if end >= start:
+                    seconds = round((end - start) / 1e9, 3)
+            except (IndexError, ValueError):
+                pass
         else:
-            # Interpreted language: copy and run
-            run_cmd = (
-                f"cp /code/{filename} /tmp/{filename} && "
-                f"cat /code/input.txt | {lang_config.run_command}"
-            )
-
-        result = _run_in_docker(
-            lang_config,
-            tmp_dir,
-            run_cmd,
-            timeout=config.EXECUTION_TIMEOUT,
-        )
-
-        return result
-
-    finally:
-        # Clean up temp directory
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+            kept.append(line)
+    return "\n".join(kept).strip(), seconds
 
 
-def _run_in_docker(
-    lang_config: LanguageConfig,
-    host_dir: str,
-    command: str,
-    timeout: int,
-) -> SandboxResult:
-    """Run a command inside a Docker container with security flags.
-
-    This is an INTERNAL function — NEVER expose to the LLM directly.
-    """
-    import time
-
-    docker_cmd = _build_docker_command(lang_config, host_dir, command, timeout)
-    logger.info(f"Sandbox exec: {lang_config.name} (timeout={timeout}s)")
-
-    start_time = time.time()
-    try:
-        proc = subprocess.run(
-            docker_cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout + 5,  # Extra buffer beyond container timeout
-        )
-        elapsed = time.time() - start_time
-
-        return SandboxResult(
-            stdout=proc.stdout.strip(),
-            stderr=proc.stderr.strip(),
-            exit_code=proc.returncode,
-            execution_time=round(elapsed, 3),
-        )
-
-    except subprocess.TimeoutExpired:
-        elapsed = time.time() - start_time
-        logger.warning(f"Sandbox timeout after {elapsed:.1f}s")
-        return SandboxResult(
-            stderr=f"Execution timed out after {timeout} seconds",
-            exit_code=-1,
-            timed_out=True,
-            execution_time=round(elapsed, 3),
-        )
-
-    except Exception as e:
-        logger.error(f"Sandbox error: {e}")
-        return SandboxResult(
-            stderr=str(e),
-            exit_code=-1,
-        )
+def _cap(text: str) -> str:
+    return text if len(text) <= MAX_OUTPUT_CHARS else text[:MAX_OUTPUT_CHARS]
 
 
 def _docker_available() -> bool:
     """Check if Docker is installed and running."""
     try:
-        result = subprocess.run(
-            ["docker", "info"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+        result = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=15)
         return result.returncode == 0
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return False
 
 
+def _ensure_image(image: str) -> str | None:
+    """Pull the image if missing (outside the run timeout). Returns an error or None."""
+    try:
+        if subprocess.run(["docker", "image", "inspect", image], capture_output=True, timeout=15).returncode == 0:
+            return None
+        pull = subprocess.run(["docker", "pull", image], capture_output=True, text=True, timeout=600)
+        return None if pull.returncode == 0 else f"Could not pull Docker image {image}: {pull.stderr.strip()[-300:]}"
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return f"Could not pull Docker image {image}: {exc}"
+
+
+def run_code_in_sandbox(language: str, code: str, stdin_input: str = "") -> SandboxResult:
+    """Compile (if needed) and run code in a fresh sandbox. Never raises."""
+    lang = get_language_config(language)
+    if not lang:
+        return SandboxResult(
+            stderr=f"Unsupported language: {language}. Supported: {', '.join(supported_languages())}",
+            exit_code=1,
+        )
+    if not _docker_available():
+        return SandboxResult(
+            stderr=(
+                "Docker is not installed or not running. run_code executes code in an isolated "
+                "Docker container; install Docker Desktop (or Docker Engine), start it, then retry."
+            ),
+            exit_code=1,
+        )
+    pull_error = _ensure_image(lang.docker_image)
+    if pull_error:
+        return SandboxResult(stderr=pull_error, exit_code=1)
+
+    filename = "Main.java" if lang.file_extension == ".java" else f"solution{lang.file_extension}"
+    tmp_dir = tempfile.mkdtemp(prefix="codechef_sandbox_")
+    name = f"codechef-mcp-{uuid.uuid4().hex[:12]}"
+    try:
+        with open(os.path.join(tmp_dir, filename), "w", encoding="utf-8") as fh:
+            fh.write(code)
+        with open(os.path.join(tmp_dir, "input.txt"), "w", encoding="utf-8") as fh:
+            fh.write(stdin_input or "")
+        os.chmod(tmp_dir, 0o755)
+
+        wall_limit = config.COMPILE_TIMEOUT + config.EXECUTION_TIMEOUT + 20
+        started = time.time()
+        try:
+            proc = subprocess.run(
+                build_docker_command(lang, tmp_dir, name, filename),
+                capture_output=True,
+                text=True,
+                timeout=wall_limit,
+            )
+        except subprocess.TimeoutExpired:
+            subprocess.run(["docker", "kill", name], capture_output=True, timeout=15)
+            logger.warning(f"Sandbox exceeded wall-clock limit ({wall_limit}s); container killed")
+            return SandboxResult(
+                stderr="Sandbox exceeded its wall-clock limit.",
+                exit_code=-1,
+                timed_out=True,
+                execution_time=round(time.time() - started, 3),
+            )
+        wall = round(time.time() - started, 3)
+        stderr, seconds = extract_timing(proc.stderr or "")
+
+        if proc.returncode == COMPILE_ERROR_EXIT:
+            return SandboxResult(compile_error=_cap(stderr) or "Compilation failed.", exit_code=COMPILE_ERROR_EXIT)
+
+        timed_out = proc.returncode == 124  # `timeout` exit status
+        return SandboxResult(
+            stdout=_cap((proc.stdout or "").rstrip()),
+            stderr=f"Time limit exceeded ({config.EXECUTION_TIMEOUT}s)." if timed_out else _cap(stderr),
+            exit_code=proc.returncode,
+            timed_out=timed_out,
+            execution_time=seconds if seconds is not None else wall,
+        )
+    except OSError as exc:
+        logger.error(f"Sandbox error: {exc}")
+        return SandboxResult(stderr=str(exc), exit_code=-1)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def run_cpp(code: str, stdin_input: str = "") -> SandboxResult:
-    """Run C++ code in a secure sandbox. Safe API for the MCP layer."""
+    """Run C++ code in a secure sandbox."""
     return run_code_in_sandbox("cpp", code, stdin_input)
 
 
 def run_python(code: str, stdin_input: str = "") -> SandboxResult:
-    """Run Python code in a secure sandbox. Safe API for the MCP layer."""
+    """Run Python code in a secure sandbox."""
     return run_code_in_sandbox("python", code, stdin_input)

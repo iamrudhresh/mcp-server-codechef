@@ -5,7 +5,7 @@ import { registerTools } from "./tools.js";
 
 const server = new McpServer({
   name: "codechef-mcp",
-  version: "0.1.2",
+  version: "0.2.0",
 });
 
 registerTools(server);

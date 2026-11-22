@@ -24,15 +24,10 @@ async def fetch_contest_details(contest_code: str) -> dict:
     """
     url = f"{config.CODECHEF_API_URL}/contests/{contest_code}"
 
-    # Get cookies from authenticated browser session
-    from app.browser.login import get_browser_context
-    try:
-        context = await get_browser_context()
-        playwright_cookies = await context.cookies()
-        cookies = {c["name"]: c["value"] for c in playwright_cookies}
-    except Exception as e:
-        logger.error(f"Failed to get authenticated browser context for cookies: {e}")
-        cookies = {}
+    # Contest data is public; reuse an existing login session if there is one,
+    # but never force a login just to read it.
+    from app.browser.login import get_session
+    cookies = get_session().cookies()
 
     async with httpx.AsyncClient() as client:
         try:
@@ -50,7 +45,10 @@ async def fetch_contest_details(contest_code: str) -> dict:
 
             # Extract problem list
             problems = []
-            problem_data = data.get("problems", {})
+            # CodeChef sends an object keyed by problem code, or [] when empty.
+            problem_data = data.get("problems") or {}
+            if not isinstance(problem_data, dict):
+                problem_data = {}
             for code, info in problem_data.items():
                 problems.append({
                     "code": code,
@@ -62,7 +60,7 @@ async def fetch_contest_details(contest_code: str) -> dict:
             # Sort by problem order (usually alphabetical code)
             problems.sort(key=lambda p: p["code"])
 
-            return {
+            result = {
                 "contest_code": contest_code,
                 "contest_name": data.get("name", contest_code),
                 "start_date": data.get("start_date", ""),
@@ -71,12 +69,42 @@ async def fetch_contest_details(contest_code: str) -> dict:
                 "problem_count": len(problems),
             }
 
+            # Starters-style contests are parents: problems live in per-division
+            # child contests (START100A, START100B, ...); the parent lists none.
+            divisions = parse_divisions(data.get("child_contests"))
+            if divisions:
+                result["divisions"] = divisions
+                if not problems:
+                    result["message"] = (
+                        "This is a parent contest with no problems of its own. Open one of the "
+                        f'division contests instead, e.g. open_contest("{divisions[-1]["contest_code"]}").'
+                    )
+            return result
+
         except httpx.HTTPStatusError as e:
             logger.error(f"Contest API error: {e.response.status_code}")
             return {"error": f"Contest '{contest_code}' not found or API error: {e.response.status_code}"}
         except Exception as e:
             logger.error(f"Failed to fetch contest: {e}")
             return {"error": str(e)}
+
+
+def parse_divisions(child_contests) -> list[dict]:
+    """Normalize the ``child_contests`` map of a parent contest."""
+    if not isinstance(child_contests, dict):
+        return []
+    divisions = []
+    for child in child_contests.values():
+        if not isinstance(child, dict) or not child.get("contest_code"):
+            continue
+        div = child.get("div") or {}
+        divisions.append({
+            "division": div.get("name"),
+            "contest_code": str(child["contest_code"]),
+            "min_rating": div.get("min_rating"),
+            "max_rating": div.get("max_rating"),
+        })
+    return sorted(divisions, key=lambda d: d["contest_code"])
 
 
 async def fetch_problem_list(contest_code: str) -> list[dict]:

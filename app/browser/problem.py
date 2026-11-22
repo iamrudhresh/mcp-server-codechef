@@ -29,15 +29,10 @@ async def fetch_problem(contest_code: str, problem_code: str) -> dict:
     """
     url = f"{config.CODECHEF_API_URL}/contests/{contest_code}/problems/{problem_code}"
 
-    # Get cookies from authenticated browser session
-    from app.browser.login import get_browser_context
-    try:
-        context = await get_browser_context()
-        playwright_cookies = await context.cookies()
-        cookies = {c["name"]: c["value"] for c in playwright_cookies}
-    except Exception as e:
-        logger.error(f"Failed to get authenticated browser context for cookies: {e}")
-        cookies = {}
+    # Problems are public; reuse an existing login session if there is one.
+    from app.browser.login import JudgeError, get_session
+    session = get_session()
+    cookies = session.cookies()
 
     async with httpx.AsyncClient() as client:
         try:
@@ -58,20 +53,19 @@ async def fetch_problem(contest_code: str, problem_code: str) -> dict:
             problem_text = _html_to_text(problem_html)
 
             # Check if it returned a placeholder/unauthorized statement
+            # Some contest problems only show a placeholder to anonymous users.
+            # Log in (when credentials exist) and fetch once more.
             if (
                 "example problem statement in markdown" in problem_text.lower()
-                or data.get("submit_error") == "You need to login to submit."
+                and config.CODECHEF_USERNAME
+                and config.CODECHEF_PASSWORD
             ):
-                logger.warning(
-                    f"Detected placeholder or unauthorized statement for {problem_code}. "
-                    "Retrying after forcing a fresh login..."
-                )
-                from app.browser import login
-                login._browser_context = None  # Force re-login
-
-                context = await get_browser_context()
-                playwright_cookies = await context.cookies()
-                cookies = {c["name"]: c["value"] for c in playwright_cookies}
+                logger.warning(f"Placeholder statement for {problem_code}; retrying with login")
+                try:
+                    await session.login()
+                except JudgeError as err:
+                    return {"error": err.message}
+                cookies = session.cookies()
 
                 response = await client.get(
                     url,

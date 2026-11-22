@@ -1,180 +1,198 @@
-# codechef-mcp (Unified Edition)
+# mcp-server-codechef
 
+[![CI](https://github.com/iamrudhresh/mcp-server-codechef/actions/workflows/ci.yml/badge.svg)](https://github.com/iamrudhresh/mcp-server-codechef/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/mcp-server-codechef)](https://www.npmjs.com/package/mcp-server-codechef)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
-[![python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](requirements.txt)
+[![python](https://img.shields.io/badge/python-%3E%3D3.11-blue)](requirements.txt)
 
-The unified, complete **Model Context Protocol (MCP)** server for CodeChef. It bridges AI assistants (such as Claude Desktop, Cursor, OpenCode, and Gemini) with CodeChef for both **User Profiling & Analytics** and **Contest Participation & Problem Solving**.
+**Docs & showcase:** https://iamrudhresh.github.io/mcp-server-codechef/
 
-Available in two seamless runtimes:
-* **Node.js (ESM)**: Lightweight, zero-config stdio MCP server for profile analytics and contest browsing.
-* **Python (FastMCP)**: Full-featured engine supporting all tools, Docker sandbox code execution (C++, Python, Java, Go, Rust), and Playwright browser submission/verdict polling over STDIO or streamable HTTP/SSE.
+A **Model Context Protocol (MCP)** server for CodeChef. It connects AI assistants (Claude Desktop,
+Claude Code, Cursor, Cline, Gemini and others) to CodeChef for **profile analytics**, **contests
+and problems**, **sandboxed code execution**, and **submission with verdict tracking**.
 
----
+It ships in two interchangeable runtimes with **the same 18 tools**:
 
-## 🚀 Capabilities & Tools
-
-### 1. User Profiles & Analytics
-| Tool | Description |
-| --- | --- |
-| `get_profile` | Structured user profile (name, stars, current/highest rating, division, global/country rank, problems solved, contest count, recent form). |
-| `get_rating_history` | Chronological contest history with rating after each contest, rating deltas (`ratingChange`), and ranks. |
-| `get_activity` | Submission heat map summary: total submissions, active days, average submissions per active day, busiest day, and monthly breakdown. |
-| `get_contests` | Contests participated in with problems solved in each, merged with rating change and rank. |
-| `get_solved_problems` | Unique problems solved by a user mapped to their source contest. |
-| `compare_users` | Compact side-by-side comparison for 2–5 handles. |
-
-### 2. Contest Management & Problem Solving
-| Tool | Description |
-| --- | --- |
-| `open_contest` | Open contest and fetch metadata, start/end dates, problem list, and category details. |
-| `list_problems` | List all problems in a contest with codes, names, and submission counts. |
-| `get_problem` | Fetch clean problem statements (Markdown), constraints, time/memory limits, and sample test cases. |
-| `validate_complexity` | Static heuristic time/space complexity analysis (loop nesting depth & annotations). |
-| `generate_tests` | Generate adversarial edge cases (minimum/maximum bounds, all identical, sorted, boundary flips, random cases). |
-| `get_contest_progress`* | Track attempted, solved, and remaining problems in an active contest. |
-
-### 3. Execution, Submission & Automated Repair (Python Engine)
-| Tool | Description |
-| --- | --- |
-| `run_code`* | Execute code in an isolated Docker sandbox with zero network access, memory limits, CPU caps, and timeouts (supports C++, Python, Java, Go, Rust). |
-| `evaluate_confidence`* | Pre-submission confidence evaluation against sample and adversarial tests. |
-| `submit_solution`* | Automate CodeChef submission via Playwright browser automation. |
-| `get_submission_status`* | Poll submission verdict (AC, WA, TLE, RE) and runtime metrics. |
-| `retry_solution`* | Self-repair diagnosis pipeline that analyzes failure causes and suggests code fixes. |
-| `get_submission_history`* | Retrieve past submission history from local SQLite database. |
-
-*\* Advanced execution and submission tools run via the Python engine.*
+* **Node.js** — `npx -y mcp-server-codechef`, STDIO. No browser or native modules required.
+* **Python (FastMCP)** — STDIO or Streamable HTTP, Docker image included.
 
 ---
 
-## 📂 Project Structure
+## Tools
 
-```text
-codechef-mcp/
-│
-├── app/                  # Python FastMCP Server
-│   ├── browser/          # Profile scrapers, Playwright submitters, API clients
-│   │   ├── profile.py    # User profile, rating history, heatmap & comparison
-│   │   ├── contest.py    # Contest metadata & problem list fetching
-│   │   ├── problem.py    # Problem statement & sample test parser
-│   │   ├── login.py      # Playwright authentication manager
-│   │   ├── submission.py # Code submission automation
-│   │   └── verdict.py    # Verdict polling loop
-│   ├── models/           # SQLAlchemy SQLite schema (contests, submissions, logs)
-│   ├── retry_engine/     # Failure diagnostic & repair pipeline
-│   ├── sandbox/          # Docker runner & multi-language configurations
-│   ├── solver/           # Sequential contest solver state
-│   ├── tools/            # FastMCP tool registrations (18 tools)
-│   ├── utils/            # Structured logging & Redis/in-memory cache
-│   ├── config.py         # Configuration loader
-│   ├── main.py           # Streamable HTTP ASGI app
-│   └── mcp_server.py     # FastMCP server instance
-│
-├── src/                  # Node.js MCP Server
-│   ├── api.js            # Node API router
-│   ├── contest.js        # Contest metadata, problem statement & complexity analyzer
-│   ├── errors.js         # Error definitions
-│   ├── http.js           # HTTP fetch client with caching & rate limits
-│   ├── parse.js          # Profile HTML & inline script JSON parser
-│   ├── server.js         # Stdio server entrypoint
-│   └── tools.js          # Stdio tool definitions (11 tools)
-│
-├── tests/                # Python test suite (33 unit tests)
-├── test/                 # Node.js test suite (34 unit tests)
-├── docs/                 # PRD and cloud deployment guides (Fly.io, Render)
-├── Dockerfile            # Container definition
-├── docker-compose.yml    # Docker Compose definition
-├── run_server.py         # Python server CLI runner (STDIO & HTTP)
-├── requirements.txt      # Python dependencies
-└── package.json          # Node.js package definition
-```
+### Profiles & analytics (no setup)
+| Tool | Description |
+| --- | --- |
+| `get_profile` | Name, stars, current/highest rating, division, global/country rank, problems solved, contest count, recent form. |
+| `get_rating_history` | Contest history (newest first) with rating, rating change and rank. |
+| `get_activity` | Submission heat-map summary: totals, active days, busiest day, monthly breakdown. |
+| `get_contests` | Contests a user took part in, with problems solved, rank and rating change. |
+| `get_solved_problems` | Unique problems solved, mapped to their contest. |
+| `compare_users` | Side-by-side comparison of 2–5 handles. |
+
+### Contests & problems (no setup)
+| Tool | Description |
+| --- | --- |
+| `open_contest` | Contest metadata and problem list; starts progress tracking. Parent contests (e.g. Starters) list their division contests. |
+| `list_problems` | Problems in a contest with codes, names and submission counts. |
+| `get_problem` | Statement, constraints, time/memory limits and sample tests. |
+| `get_contest_progress` | Solved / attempted / skipped / remaining problems and the recommended next one. |
+| `validate_complexity` | Heuristic time-complexity estimate from loop nesting and annotations. |
+| `generate_tests` | Edge-case inputs: min/max bounds, duplicates, sorted, sign flips. |
+| `evaluate_confidence` | Pre-submission score out of 100 from sample tests, generated tests, complexity and runtime. |
+
+### Code execution (needs Docker)
+| Tool | Description |
+| --- | --- |
+| `run_code` | Compile and run C, C++, Python, Java, Go or Rust in an isolated container: no network, read-only filesystem, memory/CPU/process limits, time limit. |
+
+### Submission (needs your CodeChef login)
+| Tool | Description |
+| --- | --- |
+| `submit_solution` | Submit code to CodeChef on your account; returns the submission id. |
+| `get_submission_status` | Wait for the verdict: Accepted, Wrong Answer, TLE, Runtime Error, Compilation Error, Partially Accepted, with time and memory. |
+| `retry_solution` | Diagnose the latest failed submission and suggest concrete fixes. |
+| `get_submission_history` | Submissions made through the server for a problem, with verdicts. |
+
+**Argument naming:** Node uses camelCase (`contestCode`, `problemCode`), Python uses snake_case
+(`contest_code`, `problem_code`). Outputs are the same.
 
 ---
 
-## 🛠️ Usage & Setup
+## Quick start
 
-### Running via Node.js
+### Node.js (recommended)
 
-#### 1. Instant run via npx:
-```bash
-npx -y mcp-server-codechef
+```json
+{
+  "mcpServers": {
+    "codechef": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-codechef"]
+    }
+  }
+}
 ```
 
-#### 2. Local installation:
-```bash
-npm install
-npm test
-npm start
+Claude Code: `claude mcp add codechef -- npx -y mcp-server-codechef`
+
+### Enabling submission
+
+Add your CodeChef username and password to the server's `env` block:
+
+```json
+{
+  "mcpServers": {
+    "codechef": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-codechef"],
+      "env": {
+        "CODECHEF_USERNAME": "your_handle",
+        "CODECHEF_PASSWORD": "your_password"
+      }
+    }
+  }
+}
 ```
 
-### Running via Python
+* Credentials stay on your machine. They are sent only to `www.codechef.com` to log in.
+* The session cookie is cached in `~/.mcp-server-codechef/session.json` (owner-only permissions)
+  so the server does not log in on every call, and logs in again automatically when it expires.
+* Accounts created with **Google sign-in** have no password; set one at
+  <https://www.codechef.com/user/password> first.
 
-#### 1. Setup virtual environment:
+### Enabling `run_code`
+
+Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker
+Engine on Linux). Language images (`gcc`, `python`, `eclipse-temurin`, `golang`, `rust`) are pulled
+automatically on first use.
+
+### Python
+
 ```bash
 python -m venv venv
-# Windows:
-.\venv\Scripts\activate
-# Linux/macOS:
-source venv/bin/activate
-
+# Windows: .\venv\Scripts\activate     Linux/macOS: source venv/bin/activate
 pip install -r requirements.txt
-playwright install chromium
+
+python run_server.py                        # STDIO
+python run_server.py --http --port 8000     # Streamable HTTP at http://localhost:8000/mcp
 ```
 
-#### 2. Run Python tests:
-```bash
-pytest tests/ -v
-```
+Put credentials in `.env` (see `.env.example`) or in the client's `env` block.
 
-#### 3. Run Python Server:
-```bash
-# STDIO Transport:
-python run_server.py
+---
 
-# Streamable HTTP/SSE Transport:
-python run_server.py --http --port 8000
+## How submission works
+
+The server calls the same JSON endpoints the codechef.com web app uses:
+
+| Step | Endpoint |
+| --- | --- |
+| Log in | `POST /api/login` with the page's CSRF token |
+| Languages | `GET /api/ide/all/languages/all` (ids resolved automatically: `cpp` → C++, `python` → PYTH 3, …) |
+| Submit | `POST /api/ide/submit` with `sourceCode`, `language`, `problemCode`, `contestCode` |
+| Verdict | `GET /api/ide/submit?solution_id=<id>`, polled while judging |
+
+No headless browser is used.
+
+---
+
+## Project structure
+
+```text
+mcp-server-codechef/
+├── src/                  # Node.js runtime (npm package)
+│   ├── server.js         # STDIO entrypoint
+│   ├── tools.js          # 18 tool registrations
+│   ├── api.js, parse.js, http.js   # Profiles & analytics
+│   ├── contest.js        # Contests, problems, complexity, test generation
+│   ├── judge.js          # Login, submit, verdict
+│   ├── sandbox.js        # Docker code execution
+│   ├── solver.js         # Contest progress, failure analysis, confidence score
+│   ├── store.js          # Local submission history (JSON file)
+│   └── workflow.js       # Tool orchestration
+├── app/                  # Python runtime (FastMCP)
+│   ├── browser/          # Profile, contest, problem, login, submission, verdict clients
+│   ├── sandbox/          # Docker runner & language configs
+│   ├── tools/            # 18 tool registrations
+│   ├── models/           # SQLite storage
+│   └── retry_engine/, solver/, validator/
+├── test/                 # Node tests
+├── tests/                # Python tests
+├── docs/                 # GitHub Pages site
+├── run_server.py         # Python CLI (STDIO / --http)
+└── Dockerfile, docker-compose.yml
 ```
 
 ---
 
-## 🔌 Connecting to AI Clients
+## Testing
 
-### Claude Desktop
-Add to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "codechef": {
-      "command": "node",
-      "args": ["/absolute/path/mcp-server-codechef/src/server.js"]
-    }
-  }
-}
-```
-
-Or for the Python full-suite server:
-```json
-{
-  "mcpServers": {
-    "codechef": {
-      "command": "/absolute/path/mcp-server-codechef/venv/bin/python",
-      "args": ["/absolute/path/mcp-server-codechef/run_server.py"]
-    }
-  }
-}
-```
-
-### Cursor / Web Agents (HTTP/SSE)
-Run:
 ```bash
-python run_server.py --http --port 8000
+# Node
+npm run test:unit      # offline: parsing, judge client (mocked), sandbox flags, scoring
+npm run test:sandbox   # real Docker runs for every language (skips if Docker is missing)
+npm run test:mcp       # boots the server and calls tools over MCP
+npm run test:live      # live CodeChef profile checks
+
+# Python
+pytest
 ```
-Connect to `http://localhost:8000/mcp`.
 
----
+CI runs the Node suite on Node 20/22/24, the Docker sandbox suite, and the Python suite on 3.11–3.13.
 
-## 📄 License
-MIT License.
+## Configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `CODECHEF_USERNAME` / `CODECHEF_PASSWORD` | — | Needed for submission tools only |
+| `CODECHEF_MCP_HOME` | `~/.mcp-server-codechef` | Node: session and history storage |
+| `SANDBOX_MEMORY_LIMIT` | `512m` | Container memory limit |
+| `SANDBOX_CPU_LIMIT` / `SANDBOX_PID_LIMIT` | `1` / `64` | CPU and process limits |
+| `COMPILE_TIMEOUT` / `EXECUTION_TIMEOUT` | `20` / `5` | Seconds |
+| `MAX_RETRIES` / `CONFIDENCE_THRESHOLD` | `3` / `75` | Retry tracking and submit threshold |
+
+## License
+
+MIT — see [LICENSE](LICENSE). Unofficial project, not affiliated with CodeChef.

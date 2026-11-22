@@ -38,6 +38,14 @@ LANGUAGES: dict[str, LanguageConfig] = {
         run_command="/tmp/solution",
         codechef_id="cpp14",
     ),
+    "c": LanguageConfig(
+        name="C",
+        docker_image="gcc:13",
+        file_extension=".c",
+        compile_command="gcc -std=c17 -O2 -o /tmp/solution /tmp/solution.c -lm",
+        run_command="/tmp/solution",
+        codechef_id="c",
+    ),
     "python": LanguageConfig(
         name="Python 3",
         docker_image="python:3.12-slim",
@@ -51,7 +59,7 @@ LANGUAGES: dict[str, LanguageConfig] = {
         docker_image="eclipse-temurin:21-jdk",
         file_extension=".java",
         compile_command="javac -d /tmp /tmp/Main.java",
-        run_command="java -cp /tmp Main",
+        run_command="java -Xss64m -cp /tmp Main",
         codechef_id="java",
     ),
     "go": LanguageConfig(
@@ -77,6 +85,9 @@ LANGUAGES: dict[str, LanguageConfig] = {
 LANGUAGES["c++"] = LANGUAGES["cpp"]
 LANGUAGES["python3"] = LANGUAGES["python"]
 LANGUAGES["cpp17"] = LANGUAGES["cpp"]
+LANGUAGES["py"] = LANGUAGES["python"]
+LANGUAGES["golang"] = LANGUAGES["go"]
+LANGUAGES["rs"] = LANGUAGES["rust"]
 
 
 def get_language_config(language: str) -> LanguageConfig | None:
@@ -88,7 +99,7 @@ def get_language_config(language: str) -> LanguageConfig | None:
     Returns:
         LanguageConfig or None if unsupported
     """
-    return LANGUAGES.get(language.lower())
+    return LANGUAGES.get(str(language or "").strip().lower())
 
 
 def supported_languages() -> list[str]:

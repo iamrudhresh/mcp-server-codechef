@@ -45,10 +45,12 @@ async def open_contest(contest_code: str) -> dict[str, Any]:
     problems = details.get("problems", [])
     create_contest_state(contest_code, problems)
 
-    return {
+    result = {
         "status": "success",
         "contest_code": contest_code,
         "contest_name": details["contest_name"],
+        "start_date": details.get("start_date", ""),
+        "end_date": details.get("end_date", ""),
         "problems": [
             {
                 "code": p["code"],
@@ -60,6 +62,11 @@ async def open_contest(contest_code: str) -> dict[str, Any]:
         ],
         "problem_count": details["problem_count"],
     }
+    # Parent contests (e.g. Starters) list their per-division child contests.
+    for key in ("divisions", "message"):
+        if details.get(key):
+            result[key] = details[key]
+    return result
 
 
 @mcp.tool()
@@ -116,7 +123,7 @@ async def get_problem(contest_code: str, problem_code: str) -> dict[str, Any]:
                 "input_format": db_problem.input_format,
                 "output_format": db_problem.output_format,
                 "url": db_problem.url,
-                "sample_inputs": [],  # Samples can be fetched from browser/playwright if needed, or left empty if not cached
+                "sample_inputs": [],  # Samples are not cached in the DB
                 "sample_outputs": [],
             }
         else:

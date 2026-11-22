@@ -23,22 +23,27 @@ async def submit_solution(
     language: str,
     code: str,
 ) -> dict[str, Any]:
-    """Submit code to CodeChef for checking.
+    """Submit code to CodeChef for judging on your account; returns the submission id.
+
+    Requires CODECHEF_USERNAME and CODECHEF_PASSWORD (.env or the MCP client's
+    env block). Follow up with get_submission_status.
 
     Args:
-        contest_code: The code of the contest (e.g. "START123").
-        problem_code: The code of the problem (e.g. "PROB1").
-        language: Programming language (e.g., "cpp", "python").
+        contest_code: The code of the contest (e.g. "START123", or "PRACTICE").
+        problem_code: The code of the problem (e.g. "FLOW001").
+        language: cpp, c, python, pypy, java, go, rust, javascript, or any CodeChef language name.
         code: The complete source code to submit.
     """
     contest_code = contest_code.upper()
     problem_code = problem_code.upper()
     logger.info(f"MCP Tool 'submit_solution' called for {contest_code}/{problem_code}")
 
-    # Submit using Playwright browser automation
+    # Submit through the CodeChef API using the logged-in session
     result = await submit_code(contest_code, problem_code, language, code)
     if "error" in result:
-        return {"status": "error", "message": result["error"]}
+        return {"status": "error", "code": result.get("code", "ERROR"), "message": result["error"]}
+    contest_code = result.get("contest_code", contest_code)
+    problem_code = result.get("problem_code", problem_code)
 
     submission_id = result.get("submission_id")
     if submission_id:
@@ -47,7 +52,7 @@ async def submit_solution(
             submission_id=submission_id,
             contest_code=contest_code,
             problem_code=problem_code,
-            language=language,
+            language=result.get("language", language),
             code=code,
             verdict="Pending",
             verdict_code="wait",
@@ -71,11 +76,16 @@ async def submit_solution(
 
 
 @mcp.tool()
-async def get_submission_status(submission_id: str) -> dict[str, Any]:
-    """Poll the status and final verdict of a CodeChef submission.
+async def get_submission_status(submission_id: str, wait_seconds: int = 60) -> dict[str, Any]:
+    """Wait for and return the verdict of a CodeChef submission.
+
+    Verdicts: Accepted, Wrong Answer, Time Limit Exceeded, Runtime Error,
+    Compilation Error, Partially Accepted (with time, memory and compile output).
+    Requires CODECHEF_USERNAME / CODECHEF_PASSWORD.
 
     Args:
-        submission_id: The ID of the submission to check.
+        submission_id: The ID returned by submit_solution.
+        wait_seconds: How long to wait for judging to finish (default 60, max 180).
     """
     logger.info(f"MCP Tool 'get_submission_status' called for ID={submission_id}")
 
@@ -83,10 +93,12 @@ async def get_submission_status(submission_id: str) -> dict[str, Any]:
     sub = await get_submission(submission_id)
 
     # Poll verdict from CodeChef API
-    result = await poll_submission_verdict(submission_id)
+    result = await poll_submission_verdict(submission_id, max_wait=max(0, min(int(wait_seconds), 180)))
+    if "error" in result:
+        return {"status": "error", "code": result.get("code", "ERROR"), "message": result["error"]}
 
-    # Update database
-    if sub and "error" not in result:
+    # Update database once judging has finished
+    if sub and not result.get("pending"):
         await save_submission(
             submission_id=submission_id,
             contest_code=sub.contest_code,

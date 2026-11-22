@@ -65,7 +65,7 @@ def analyze_failure(verdict: str, stderr: str = "", failed_input: str = "") -> d
         "priority": "high",
     }
 
-    if verdict in ("WA", "Wrong Answer"):
+    if verdict in ("WA", "Wrong Answer", "PAC", "Partially Accepted"):
         analysis["diagnosis"] = (
             "Solution produces incorrect output. Possible causes: "
             "edge case not handled, off-by-one error, integer overflow, "

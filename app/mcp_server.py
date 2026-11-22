@@ -45,4 +45,4 @@ mcp = FastMCP(
 )
 
 # Report this server's version (FastMCP otherwise reports the SDK version).
-mcp._mcp_server.version = "0.1.2"
+mcp._mcp_server.version = "0.2.0"

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodeChef MCP Server | Official Documentation &amp; Showcase</title>
-    <meta name="description" content="Production-ready Model Context Protocol (MCP) Server for CodeChef with 18 tools: profile analytics, contest automation, Docker sandbox execution, and autonomous submission with self-repair.">
+    <meta name="description" content="Model Context Protocol (MCP) server for CodeChef with 18 tools in Node.js and Python: profile analytics, contests, Docker sandbox execution, and submission with verdict tracking.">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -127,10 +127,10 @@
 
         <div class="flex flex-wrap items-center justify-center gap-3 text-xs font-mono text-gray-400">
             <span class="px-3 py-1 rounded-lg bg-gray-900 border border-gray-800 flex items-center gap-1.5">
-                <span class="text-green-400">&#9679;</span> 18 Tools (Python)
+                <span class="text-green-400">&#9679;</span> 18 Tools
             </span>
             <span class="px-3 py-1 rounded-lg bg-gray-900 border border-gray-800 flex items-center gap-1.5">
-                <span class="text-blue-400">&#9679;</span> 11 Tools (Node.js)
+                <span class="text-blue-400">&#9679;</span> Node.js &amp; Python
             </span>
             <span class="px-3 py-1 rounded-lg bg-gray-900 border border-gray-800 flex items-center gap-1.5">
                 <span class="text-purple-400">&#9679;</span> Docker Sandbox
@@ -180,7 +180,7 @@
                 <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">&#129302;</div>
                 <h4 class="text-lg font-bold text-white mb-2">Automated Submission &amp; Verdicts</h4>
                 <p class="text-sm text-gray-400 leading-relaxed">
-                    Playwright-driven <code class="text-amber-300">submit_solution</code> posts to CodeChef and polls judge verdicts (AC, WA, TLE, RE) through <code class="text-amber-300">get_submission_status</code>.
+                    <code class="text-amber-300">submit_solution</code> submits through CodeChef&rsquo;s own API on your account, and <code class="text-amber-300">get_submission_status</code> waits for the verdict (AC, WA, TLE, RE, CE) &mdash; no headless browser needed.
                 </p>
             </div>
 
@@ -224,8 +224,8 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-400 mb-1.5">Runtime Engine</label>
                         <select id="cfg-runtime" onchange="renderConfig()" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
-                            <option value="node">Node.js (11 tools, zero-config)</option>
-                            <option value="python">Python FastMCP (18 tools, full-stack)</option>
+                            <option value="node">Node.js (18 tools, npx)</option>
+                            <option value="python">Python FastMCP (18 tools, stdio/HTTP)</option>
                         </select>
                     </div>
                     <div>
@@ -297,10 +297,10 @@
                         <span class="text-xs text-gray-400">Lightweight &amp; Zero-Config</span>
                     </div>
                     <p class="text-sm text-gray-400 mb-4">
-                        An ESM <code class="text-amber-400">McpServer</code> built on the official MCP SDK with Zod schema validation and Cheerio HTML parsing. Spawned directly by your desktop client &mdash; no Docker or Python required.
+                        An ESM <code class="text-amber-400">McpServer</code> built on the official MCP SDK with Zod schema validation and Cheerio HTML parsing. Spawned directly by your desktop client via <code class="text-amber-400">npx</code> &mdash; no Python or browser required (Docker only for <code class="text-amber-400">run_code</code>).
                     </p>
                     <ul class="text-xs text-gray-400 space-y-2 font-mono">
-                        <li class="flex items-center gap-2"><span class="text-green-400">&#10003;</span> 11 profile &amp; contest tools</li>
+                        <li class="flex items-center gap-2"><span class="text-green-400">&#10003;</span> All 18 tools, including submit &amp; run_code</li>
                         <li class="flex items-center gap-2"><span class="text-green-400">&#10003;</span> Request caching &amp; rate throttling</li>
                         <li class="flex items-center gap-2"><span class="text-green-400">&#10003;</span> Node &gt;= 20, instant npx startup</li>
                     </ul>
@@ -312,12 +312,12 @@
                         <span class="text-xs text-gray-400">Full Autonomous Stack</span>
                     </div>
                     <p class="text-sm text-gray-400 mb-4">
-                        A FastMCP server exposing all 18 tools over stdio or Streamable HTTP/SSE, backed by SQLAlchemy state, a Docker sandbox runner, Playwright automation, and a diagnostic retry engine.
+                        A FastMCP server exposing the same 18 tools over stdio or Streamable HTTP, backed by SQLite state, a Docker sandbox runner, the CodeChef submit API, and a diagnostic retry engine.
                     </p>
                     <ul class="text-xs text-gray-400 space-y-2 font-mono">
                         <li class="flex items-center gap-2"><span class="text-blue-400">&#10003;</span> Isolated container execution</li>
                         <li class="flex items-center gap-2"><span class="text-blue-400">&#10003;</span> Persistent contest &amp; submission state</li>
-                        <li class="flex items-center gap-2"><span class="text-blue-400">&#10003;</span> Autonomous verdict-driven self-repair</li>
+                        <li class="flex items-center gap-2"><span class="text-blue-400">&#10003;</span> Verdict-driven failure diagnosis</li>
                     </ul>
                 </div>
             </div>
@@ -345,8 +345,8 @@
             </div>
             <div class="glass p-5 rounded-2xl border border-gray-800">
                 <div class="text-2xl mb-2">&#127916;</div>
-                <h4 class="font-bold text-white text-sm mb-1">Playwright Automation</h4>
-                <p class="text-xs text-gray-400">Headless browser submission flow with session handling and verdict polling.</p>
+                <h4 class="font-bold text-white text-sm mb-1">Native Judge API</h4>
+                <p class="text-xs text-gray-400">Login, submit and verdict polling over CodeChef&rsquo;s own endpoints, with automatic session renewal.</p>
             </div>
             <div class="glass p-5 rounded-2xl border border-gray-800">
                 <div class="text-2xl mb-2">&#129302;</div>
@@ -393,21 +393,21 @@
             { name: "open_contest", category: "contest", desc: "Opens a contest by code, fetches its problem catalog, and initializes persistent solving state.", auth: false, runtime: "Both" },
             { name: "list_problems", category: "contest", desc: "Lists all problems available in a given contest code.", auth: false, runtime: "Both" },
             { name: "get_problem", category: "contest", desc: "Clean problem statement with time/memory limits, constraints, and parsed sample test cases.", auth: false, runtime: "Both" },
-            { name: "get_contest_progress", category: "contest", desc: "Tracks contest solving state across sessions: solved, remaining, and skipped problems.", auth: false, runtime: "Python" },
+            { name: "get_contest_progress", category: "contest", desc: "Tracks contest solving state: solved, attempted, skipped and remaining problems, plus the next one to try.", auth: false, runtime: "Both" },
 
             // Solving
             { name: "validate_complexity", category: "solving", desc: "Estimates algorithmic time and space complexity of a solution before execution or submission.", auth: false, runtime: "Both" },
             { name: "generate_tests", category: "solving", desc: "Synthesizes adversarial and edge-case inputs from a problem's declared constraints.", auth: false, runtime: "Both" },
-            { name: "evaluate_confidence", category: "solving", desc: "Pre-submission confidence scoring combining complexity analysis and sandbox test outcomes.", auth: false, runtime: "Python" },
+            { name: "evaluate_confidence", category: "solving", desc: "Pre-submission confidence score out of 100 from sample tests, generated tests, complexity and runtime.", auth: false, runtime: "Both" },
 
             // Execution
-            { name: "run_code", category: "execution", desc: "Executes code in an isolated Docker sandbox (C++, Python, Java, Go, Rust) with stdin and strict resource caps.", auth: false, runtime: "Python" },
+            { name: "run_code", category: "execution", desc: "Executes code in an isolated Docker sandbox (C, C++, Python, Java, Go, Rust) with stdin, no network and strict resource caps. Requires Docker.", auth: false, runtime: "Both" },
 
             // Submission
-            { name: "submit_solution", category: "submission", desc: "Automated Playwright submission of a solution to a CodeChef contest problem.", auth: true, runtime: "Python" },
-            { name: "get_submission_status", category: "submission", desc: "Polls the judge for a verdict by submission ID (AC, WA, TLE, RE) with runtime telemetry.", auth: true, runtime: "Python" },
-            { name: "retry_solution", category: "submission", desc: "Autonomous failure diagnosis and self-repair loop that re-validates, re-runs, and re-submits.", auth: true, runtime: "Python" },
-            { name: "get_submission_history", category: "submission", desc: "Submission logs and past verdicts for a specific contest problem.", auth: true, runtime: "Python" }
+            { name: "submit_solution", category: "submission", desc: "Submits a solution to a CodeChef problem on your account via CodeChef's submit API and returns the submission id.", auth: true, runtime: "Both" },
+            { name: "get_submission_status", category: "submission", desc: "Waits for the judge verdict by submission id (AC, WA, TLE, RE, CE, partial) with time and memory.", auth: true, runtime: "Both" },
+            { name: "retry_solution", category: "submission", desc: "Diagnoses the latest failed submission (WA/TLE/RE/MLE/CE) and suggests concrete fixes.", auth: false, runtime: "Both" },
+            { name: "get_submission_history", category: "submission", desc: "Submissions made through the server for a problem, with verdicts, time and memory.", auth: false, runtime: "Both" }
         ];
 
         let activeClient = 'claude';

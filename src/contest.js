@@ -79,7 +79,7 @@ export async function openContest(contestCode) {
 
   problems.sort((a, b) => a.code.localeCompare(b.code));
 
-  return {
+  const result = {
     status: "success",
     contest_code: code,
     contest_name: data?.name ?? code,
@@ -88,6 +88,33 @@ export async function openContest(contestCode) {
     problems,
     problem_count: problems.length,
   };
+
+  // Starters-style contests are parents: the problems live in per-division
+  // child contests (START100A, START100B, ...), and the parent lists none.
+  const divisions = parseDivisions(data?.child_contests);
+  if (divisions.length) {
+    result.divisions = divisions;
+    if (!problems.length) {
+      result.message =
+        "This is a parent contest with no problems of its own. Open one of the division " +
+        `contests instead, e.g. open_contest("${divisions[divisions.length - 1].contest_code}").`;
+    }
+  }
+  return result;
+}
+
+/** Normalize the `child_contests` map of a parent contest. */
+export function parseDivisions(childContests) {
+  if (!childContests || typeof childContests !== "object") return [];
+  return Object.values(childContests)
+    .filter((c) => c && c.contest_code)
+    .map((c) => ({
+      division: c.div?.name ?? null,
+      contest_code: String(c.contest_code),
+      min_rating: c.div?.min_rating ?? null,
+      max_rating: c.div?.max_rating ?? null,
+    }))
+    .sort((a, b) => a.contest_code.localeCompare(b.contest_code));
 }
 
 /**

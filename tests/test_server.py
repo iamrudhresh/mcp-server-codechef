@@ -31,10 +31,10 @@ def test_config_loads():
     from app.config import config
     assert config.HOST == "0.0.0.0"
     assert config.PORT == 8000
-    assert config.SANDBOX_MEMORY_LIMIT == "256m"
+    assert config.SANDBOX_MEMORY_LIMIT == "512m"
     assert config.SANDBOX_CPU_LIMIT == 1
     assert config.SANDBOX_PID_LIMIT == 64
-    assert config.COMPILE_TIMEOUT == 10
+    assert config.COMPILE_TIMEOUT == 20
     assert config.EXECUTION_TIMEOUT == 5
     assert config.STRESS_TEST_TIMEOUT == 15
     assert config.MAX_RETRIES == 3
