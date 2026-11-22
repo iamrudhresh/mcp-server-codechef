@@ -1,10 +1,11 @@
 {
-  "name": "codechef-mcp",
+  "name": "mcp-server-codechef",
   "version": "0.1.2",
   "description": "MCP server that turns CodeChef user profiles into structured JSON for LLMs",
   "type": "module",
   "main": "src/server.js",
   "bin": {
+    "mcp-server-codechef": "src/server.js",
     "codechef-mcp": "src/server.js"
   },
   "files": [
@@ -25,15 +26,15 @@
     "scraper",
     "llm"
   ],
-  "author": "Sarthak Agnihotri (sarthaksec)",
+  "author": "iamrudhresh",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sarthaksec/codechef-mcp.git"
+    "url": "git+https://github.com/iamrudhresh/mcp-server-codechef.git"
   },
-  "homepage": "https://github.com/sarthaksec/codechef-mcp#readme",
+  "homepage": "https://iamrudhresh.github.io/mcp-server-codechef/",
   "bugs": {
-    "url": "https://github.com/sarthaksec/codechef-mcp/issues"
+    "url": "https://github.com/iamrudhresh/mcp-server-codechef/issues"
   },
   "publishConfig": {
     "access": "public"

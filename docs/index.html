@@ -117,9 +117,9 @@
             <div class="code-glass p-2.5 rounded-2xl flex items-center justify-between border border-gray-800 shadow-2xl">
                 <div class="flex items-center space-x-3 pl-2 overflow-x-auto text-xs sm:text-sm font-mono text-gray-300">
                     <span class="text-amber-500">$</span>
-                    <span>npx -y codechef-mcp</span>
+                    <span>npx -y mcp-server-codechef</span>
                 </div>
-                <button onclick="copySnippet('npx -y codechef-mcp', this)" class="px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-600 text-white text-xs font-semibold flex items-center space-x-1.5 transition">
+                <button onclick="copySnippet('npx -y mcp-server-codechef', this)" class="px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-600 text-white text-xs font-semibold flex items-center space-x-1.5 transition">
                     <span>Copy</span>
                 </button>
             </div>
@@ -484,7 +484,7 @@
             if (transport === 'http') env.CODECHEF_TRANSPORT = "http";
 
             if (runtime === 'node') {
-                const entry = { command: "npx", args: ["-y", "codechef-mcp"] };
+                const entry = { command: "npx", args: ["-y", "mcp-server-codechef"] };
                 if (Object.keys(env).length) entry.env = env;
                 return entry;
             }

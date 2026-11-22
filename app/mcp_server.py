@@ -43,3 +43,6 @@ mcp = FastMCP(
     user profile and analytics tools do not require authentication.
     """,
 )
+
+# Report this server's version (FastMCP otherwise reports the SDK version).
+mcp._mcp_server.version = "0.1.2"

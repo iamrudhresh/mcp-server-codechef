@@ -47,6 +47,7 @@ import app.tools.contest       # noqa: F401, E402
 import app.tools.execution     # noqa: F401, E402
 import app.tools.solving       # noqa: F401, E402
 import app.tools.submission    # noqa: F401, E402
+import app.tools.profile       # noqa: F401, E402
 
 
 def parse_args():

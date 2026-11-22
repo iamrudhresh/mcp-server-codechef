@@ -3,7 +3,7 @@ import { CodeChefError } from "./errors.js";
 const BASE = "https://www.codechef.com/users/";
 const ALLOWED_HOST = "www.codechef.com";
 const USER_AGENT =
-  "codechef-mcp/0.1 (+https://github.com/sarthaksec/codechef-mcp)";
+  "codechef-mcp/0.1 (+https://github.com/iamrudhresh/mcp-server-codechef)";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const MIN_INTERVAL_MS = 800;
 const REQUEST_TIMEOUT_MS = 25_000;

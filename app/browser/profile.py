@@ -22,7 +22,7 @@ from app.utils.logger import logger
 
 BASE_USER_URL = "https://www.codechef.com/users/"
 ALLOWED_HOST = "www.codechef.com"
-USER_AGENT = "codechef-mcp/0.1 (+https://github.com/sarthaksec/codechef-mcp)"
+USER_AGENT = "codechef-mcp/0.1 (+https://github.com/iamrudhresh/mcp-server-codechef)"
 REQUEST_TIMEOUT_SECONDS = 25.0
 MAX_RETRIES = 3
 CACHE_TTL_SECONDS = 600  # 10 minutes

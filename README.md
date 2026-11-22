@@ -1,6 +1,6 @@
 # codechef-mcp (Unified Edition)
 
-[![npm](https://img.shields.io/npm/v/codechef-mcp)](https://www.npmjs.com/package/codechef-mcp)
+[![npm](https://img.shields.io/npm/v/mcp-server-codechef)](https://www.npmjs.com/package/mcp-server-codechef)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
 [![python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](requirements.txt)
@@ -99,7 +99,7 @@ codechef-mcp/
 
 #### 1. Instant run via npx:
 ```bash
-npx codechef-mcp
+npx -y mcp-server-codechef
 ```
 
 #### 2. Local installation:
@@ -149,7 +149,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "codechef": {
       "command": "node",
-      "args": ["E:/PERSONAL/OpenSource/codechef-mcp/src/server.js"]
+      "args": ["/absolute/path/mcp-server-codechef/src/server.js"]
     }
   }
 }
@@ -160,8 +160,8 @@ Or for the Python full-suite server:
 {
   "mcpServers": {
     "codechef": {
-      "command": "E:/PERSONAL/OpenSource/codechef-mcp/venv/Scripts/python.exe",
-      "args": ["E:/PERSONAL/OpenSource/codechef-mcp/run_server.py"]
+      "command": "/absolute/path/mcp-server-codechef/venv/bin/python",
+      "args": ["/absolute/path/mcp-server-codechef/run_server.py"]
     }
   }
 }
