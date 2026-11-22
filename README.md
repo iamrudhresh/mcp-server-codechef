@@ -1,7 +1,7 @@
 # mcp-server-codechef
 
 [![CI](https://github.com/iamrudhresh/mcp-server-codechef/actions/workflows/ci.yml/badge.svg)](https://github.com/iamrudhresh/mcp-server-codechef/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/mcp-server-codechef)](https://www.npmjs.com/package/mcp-server-codechef)
+[![npm](https://img.shields.io/npm/v/@iamrudhresh/mcp-server-codechef)](https://www.npmjs.com/package/@iamrudhresh/mcp-server-codechef)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](package.json)
 [![python](https://img.shields.io/badge/python-%3E%3D3.11-blue)](requirements.txt)
@@ -14,7 +14,7 @@ and problems**, **sandboxed code execution**, and **submission with verdict trac
 
 It ships in two interchangeable runtimes with **the same 18 tools**:
 
-* **Node.js** — `npx -y mcp-server-codechef`, STDIO. No browser or native modules required.
+* **Node.js** — `npx -y @iamrudhresh/mcp-server-codechef`, STDIO. No browser or native modules required.
 * **Python (FastMCP)** — STDIO or Streamable HTTP, Docker image included.
 
 ---
@@ -69,13 +69,13 @@ It ships in two interchangeable runtimes with **the same 18 tools**:
   "mcpServers": {
     "codechef": {
       "command": "npx",
-      "args": ["-y", "mcp-server-codechef"]
+      "args": ["-y", "@iamrudhresh/mcp-server-codechef"]
     }
   }
 }
 ```
 
-Claude Code: `claude mcp add codechef -- npx -y mcp-server-codechef`
+Claude Code: `claude mcp add codechef -- npx -y @iamrudhresh/mcp-server-codechef`
 
 ### Enabling submission
 
@@ -86,7 +86,7 @@ Add your CodeChef username and password to the server's `env` block:
   "mcpServers": {
     "codechef": {
       "command": "npx",
-      "args": ["-y", "mcp-server-codechef"],
+      "args": ["-y", "@iamrudhresh/mcp-server-codechef"],
       "env": {
         "CODECHEF_USERNAME": "your_handle",
         "CODECHEF_PASSWORD": "your_password"

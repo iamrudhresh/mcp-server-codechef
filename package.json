@@ -1,5 +1,5 @@
 {
-  "name": "mcp-server-codechef",
+  "name": "@iamrudhresh/mcp-server-codechef",
   "version": "0.2.0",
   "description": "MCP server for CodeChef: profiles & analytics, contests & problems, sandboxed code execution, and submission with verdict tracking",
   "type": "module",
